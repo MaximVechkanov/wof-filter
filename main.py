@@ -72,6 +72,9 @@ class CastParams:
         self.time = time
         self.depth = depth
 
+def location_name(water: str, loc: str) -> str:
+    return water + ": " + loc
+
 def check_database(fishDb: dict, bites: list, locations: list) -> bool:
     for fishName in fishDb:
         fishBites = fishDb[fishName]['bites']
@@ -93,13 +96,21 @@ def check_database(fishDb: dict, bites: list, locations: list) -> bool:
             print("Ошибка: локации не указаны для рыбы '{}'".format(fishName))
             return False
 
-        for loc in fishLocs:
-            if not loc in locations:
-                print("Ошибка: Локация '{}', указанная для рыбы '{}' не найдена в списке локаций!".format(loc, fishName))
-                return False
+        for water in fishLocs:
+            for loc in fishLocs[water]:
+                if not location_name(water, loc) in locations:
+                    print("Ошибка: Локация '{}', указанная для рыбы '{}' не найдена в списке локаций!".format(loc, fishName))
+                    return False
 
     return True
 
+def loc_list_from_dict(locDb: dict) -> list[str]:
+    locations = []
+
+    for water in locDb:
+        for loc in locDb[water]:
+            locations.append(location_name(water, loc))
+    return locations
 
 def load_database() -> Database:
     with open('fish.yaml') as fFile, open('bites.yaml') as bFile, open('locations.yaml') as locFile:
@@ -107,11 +118,7 @@ def load_database() -> Database:
         bites = yaml.safe_load(bFile)
         locDb = yaml.safe_load(locFile)
 
-        locations = []
-
-        for water in locDb:
-            for loc in locDb[water]:
-                locations.append(water + ': ' + loc)
+        locations = loc_list_from_dict(locDb)
 
         # print(locations)
 
@@ -147,7 +154,7 @@ def main():
 
         fishParams = fishDb[args.fish]
         bites = bites.intersection(fishParams['bites'])
-        locs = locs.intersection(fishParams['locs'])
+        locs = locs.intersection(loc_list_from_dict(fishParams['locs']))
         time = time.intersection(list(fishParams['time']))
         # print(fishParams['depth'])
         depth = depth.intersection(Depth.fromList(fishParams['depth']))
@@ -169,7 +176,7 @@ def main():
                     
                     fishParams = fishDb[fishName]
                     
-                    if loc in fishParams['locs'] and bite in fishParams['bites'] and t in list(fishParams['time']):
+                    if loc in loc_list_from_dict(fishParams['locs']) and bite in fishParams['bites'] and t in list(fishParams['time']):
                         # check depth
                         fDepth = Depth.fromList(fishParams['depth'])
 
