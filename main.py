@@ -198,7 +198,7 @@ def create_html_list_from_time_set(timeset: set[str]) -> str:
     arr = []
     for t in timeset:
         arr.append(time_name[t])
-        
+
     return to_html_list(arr)
 
 def write_html_header(htmlFile):
@@ -223,6 +223,25 @@ def write_html_footer(htmlFile):
 "</table>\
 </body>\
 </html>")
+
+def merge_by_daytime(results) -> dict:
+    mergedTime = dict()
+
+    for res in results:
+        key = (res.loc, res.bite, res.depth)
+        # print(res)
+        # print(hash(key))
+
+        # if key in mergedTime:
+        #     print(results[res])
+        #     print(mergedTime[key])
+
+        if key in mergedTime and results[res] == mergedTime[key][1]:
+            mergedTime[key][0].add(res.time)
+        else:
+            mergedTime[key] = set(res.time), results[res]
+
+    return mergedTime
 
 
 def main():
@@ -264,28 +283,7 @@ def main():
 
     results = process(fishDb, bites, locs, time, depth)
 
-    mergedTime = dict()
-
-    # keys = results.keys()
-    # numResults = len(keys)
-
-    for res in results:
-        key = (res.loc, res.bite, res.depth)
-        print(res)
-        print(hash(key))
-
-        if key in mergedTime:
-            print(results[res])
-            print(mergedTime[key])
-
-        if key in mergedTime and results[res] == mergedTime[key][1]:
-            mergedTime[key][0].add(res.time)
-        else:
-            mergedTime[key] = set(res.time), results[res]
-
-    
-    results = mergedTime
-
+    results = merge_by_daytime(results)
 
     with open('result.html', 'w', encoding = 'utf-16') as htmlFile:
         write_html_header(htmlFile)
