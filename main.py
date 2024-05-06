@@ -296,7 +296,7 @@ def main():
         htmlFile.write("</body>\n")
         htmlFile.write("</html>\n")
 
-def process(fishDb, bites, locs, time, depth) -> dict[CastParams, list[str]]: 
+def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[str]]: 
     results = dict[CastParams, list[str]]()
     loopIndex = 0
 
@@ -343,7 +343,7 @@ def process(fishDb, bites, locs, time, depth) -> dict[CastParams, list[str]]:
                                     # print(oldKey)
 
                                     if oldKey in results:
-                                        fishes = results[oldKey]
+                                        fishes = results[oldKey].copy()
                                         del results[oldKey]
 
                                         # print(fishes)
