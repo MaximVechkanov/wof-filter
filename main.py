@@ -4,16 +4,7 @@ from __future__ import annotations
 
 import argparse
 import yaml
-from pprint import pprint
-
-
-# class LocationType:
-#     water: str
-#     loc: str
-    
-#     def __init__(self, water, loc):
-#         self.water = water
-#         self.loc = loc
+# from pprint import pprint
 
 LocationType = tuple[str, str]
 Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locations
@@ -287,7 +278,7 @@ def main():
     with open('result.html', 'w', encoding = 'utf-16') as htmlFile:
         write_html_header(htmlFile)
 
-        htmlFile.write('<body>\n')
+        htmlFile.write('\n<body>\n')
         htmlFile.write('<table id="results_table">\n')
 
         html_table_write_header(htmlFile, ['Водоём', 'Наживка', 'Время', 'Глубина', 'Кол-во рыб', 'Рыбы'])
