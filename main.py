@@ -172,8 +172,8 @@ def html_write_row(file, values: list[str]) -> None:
 
 def html_table_write_header(file, values: list[str]) -> None:
     file.write("<tr>\n")
-    for item in values:
-        file.write("  <th>" + str(item) + "</th>" + '\n')
+    for idx, item in enumerate(values):
+        file.write("  <th onclick=\"sortTable({})\">".format(idx) + str(item) + "</th>" + '\n')
     file.write("</tr>\n")
 
 
@@ -201,28 +201,27 @@ def create_html_list_from_time_set(timeset: set[str]) -> str:
 
     return to_html_list(arr)
 
-def write_html_header(htmlFile):
-    htmlFile.write(
-"<html>\n\
-<head>\n\
-    <title>Results for searcher</title>\n\
-</head>\n\
-<style>\n\
-    table, th, td {\n\
-    border: 1px solid black;\n\
-    border-collapse: collapse;\n\
-    padding: 10px;\n\
-}\n\
-</style>\n\
-<body>\n\
-<table>\n")
-    
+def html_embed_scripts(htmlFile):
+    htmlFile.write('<script type = "text/javascript">\n')
+    with open('scripts.js') as sFile:
+        htmlFile.write(sFile.read())
+    htmlFile.write("</script>\n")
 
-def write_html_footer(htmlFile):
-    htmlFile.write(
-"</table>\
-</body>\
-</html>")
+def write_html_header(htmlFile):
+    htmlFile.write('<!DOCTYPE html>\n')
+    htmlFile.write('<html>\n')
+    htmlFile.write('<head>\n')
+    htmlFile.write('  <title>Results for searcher</title>\n')
+    htmlFile.write('\n')
+    htmlFile.write('  <style>\n')
+    htmlFile.write('    table, th, td {\n')
+    htmlFile.write('      border: 1px solid black;\n')
+    htmlFile.write('      border-collapse: collapse;\n')
+    htmlFile.write('      padding: 7px;\n')
+    htmlFile.write('    }\n')
+    htmlFile.write('  </style>\n')
+    htmlFile.write('</head>\n')
+
 
 def merge_by_daytime(results) -> dict:
     mergedTime = dict()
@@ -288,6 +287,9 @@ def main():
     with open('result.html', 'w', encoding = 'utf-16') as htmlFile:
         write_html_header(htmlFile)
 
+        htmlFile.write('<body>\n')
+        htmlFile.write('<table id="results_table">\n')
+
         html_table_write_header(htmlFile, ['Водоём', 'Наживка', 'Время', 'Глубина', 'Кол-во рыб', 'Рыбы'])
 
         for res in results:
@@ -297,7 +299,11 @@ def main():
             # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
             html_write_row(htmlFile, [location_name_from_tuple(res[0]), res[1], create_html_list_from_time_set(time), str(res[2]), len(fishes), fishesStr])
 
-        write_html_footer(htmlFile)
+
+        htmlFile.write("</table>\n")
+        html_embed_scripts(htmlFile)
+        htmlFile.write("</body>\n")
+        htmlFile.write("</html>\n")
 
 def process(fishDb, bites, locs, time, depth) -> dict[CastParams, list[str]]: 
     results = dict[CastParams, list[str]]()
