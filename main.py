@@ -260,47 +260,33 @@ def write_html_header(htmlFile):
 def merge_by_daytime(results) -> dict:
     mergedTime = dict()
 
-    for res in results:
-        key = (res.loc, res.bite, res.depth)
+    for resKey in results:
+        fishes = results[resKey]
+        key = (resKey.loc, resKey.bite, resKey.depth, fishes)
         # print(res)
         # print(hash(key))
 
-        # if key in mergedTime:
-        #     print(results[res])
-        #     print(mergedTime[key])
-
-        if key in mergedTime and results[res] == mergedTime[key][1]:
-            mergedTime[key][0].add(res.time)
+        if key in mergedTime:
+            mergedTime[key].append(resKey.time)
         else:
-            mergedTime[key] = set(res.time), results[res]
+            mergedTime[key] = [resKey.time]
 
     return mergedTime
 
 
-def merge_by_location(results: dict[tuple, tuple]) -> dict[tuple, tuple]:
+def merge_by_bite(results) -> dict:
     merged = dict()
 
-    for res in results:
-        key = (res[1], res[2]) # bite, depth
+    for resKey in results:
 
-        if key in merged and results[res][1] == merged[key][2] and results[res][0] == merged[key][1]:
-            merged[key][0].append(res[0])
+        time = frozenset(results[resKey])
+        loc, bite, depth, fishes = resKey
+        key = (loc, time, depth, fishes)
+
+        if key not in merged:
+            merged[key] = [bite]
         else:
-            merged[key] = ([res[0]], results[res][0], results[res][1])
-
-    return merged
-
-
-def merge_by_bite(results) -> dict:
-    merged = dict[Depth]()
-
-    for res in results:
-        key = (res[0], res[2])
-
-        if key in merged and results[res][0] == merged[key][1] and results[res][1] == merged[key][2]:
-            merged[key][0].append(res[1])
-        else:
-            merged[key] = ([res[1]], results[res][0], results[res][1])
+            merged[key].append(bite)
 
     return merged
 
@@ -317,18 +303,19 @@ def print_results(results, maxBycatch: int | None):
 
         html_table_write_header(htmlFile, ['Локации', 'Наживки', 'Время', 'Глубина', 'Кол-во рыб', 'Рыбы'])
 
-        for res in results:
+        for resKey in results:
 
-            if len(results[res][2]) > (maxBycatch + 1):
+            loc, time, depth, fishes = resKey
+            bites = results[resKey]
+
+            if len(fishes) > (maxBycatch + 1):
                 continue
 
-            bites, time, fishes = results[res]
             fishesStr = to_html_list(fishes)
             bitesStr = to_html_list(bites)
 
             # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
-            html_write_row(htmlFile, [location_name_from_tuple(res[0]), bitesStr, create_html_list_from_time_set(time), str(res[1]), len(fishes), fishesStr])
-
+            html_write_row(htmlFile, [location_name_from_tuple(loc), bitesStr, create_html_list_from_time_set(time), str(depth), len(fishes), fishesStr])
 
         htmlFile.write("</table>\n")
         html_embed_scripts(htmlFile)
@@ -378,23 +365,30 @@ def main():
     print(time)
     print(depth)
 
-    results = process(fishDb, bites, locs, time, depth)
+    initialResults = process(fishDb, bites, locs, time, depth)
+
+    # print("Initial results length: " + str(len(initialResults)))
 
     if args.fish is not None:
         cleanedUp = dict()
 
-        for res in results:
-            if args.fish in results[res]:
-                cleanedUp[res] = results[res]
+        for res in initialResults:
+            if args.fish in initialResults[res]:
+                cleanedUp[res] = frozenset(initialResults[res])
     else:
-        cleanedUp = results
+        cleanedUp = initialResults
 
-    results = merge_by_daytime(cleanedUp)
+    # print("Cleaned up results length: " + str(len(cleanedUp)))
+
+    meggedByTime = merge_by_daytime(cleanedUp)
+
+    # print("merge_by_daytime results length: " + str(len(meggedByTime)))
 
     # results: tuple(location, bite, depth) -> (time, fishes)
 
-    merged = merge_by_bite(results)
+    merged = merge_by_bite(meggedByTime)
 
+    print("Final results length: " + str(len(merged)))
     # results: tuple(location, depth) -> tuple(bite, time, fishes)
 
     print_results(merged, args.maxbycatch)
@@ -473,3 +467,9 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
 
 if __name__ == "__main__":
     main()
+    # test = dict()
+    # test[6] = [10]
+    # test.setdefault(6, [11]).append(20)
+    # test.setdefault(5, [11]).append(20)
+
+    # print(test)
