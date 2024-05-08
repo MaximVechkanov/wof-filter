@@ -145,11 +145,10 @@ def check_database(fishDb: dict, bites: list, locations: list) -> bool:
             print("Ошибка: локации не указаны для рыбы '{}'".format(fishName))
             return False
 
-        for water in fishLocs:
-            for loc in fishLocs[water]:
-                if not to_location_type(water, loc) in locations:
-                    print("Ошибка: Локация '{}', указанная для рыбы '{}' не найдена в списке локаций!".format(loc, fishName))
-                    return False
+        for location in fishLocs:
+            if not location in locations:
+                print("Ошибка: Локация '{}', указанная для рыбы '{}' не найдена в списке локаций!".format(location, fishName))
+                return False
     return True
 
 
@@ -163,20 +162,37 @@ def loc_list_from_dict(locDb: dict) -> list[LocationType]:
     return locations
 
 
+def parse_locations(locDb: dict, fishDb: dict) -> list[LocationType]:
+    locations = []
+
+    for water in locDb:
+        for loc in locDb[water]:
+            fishlist = locDb[water][loc]
+
+            locationAsTuple = (water, loc)
+
+            locations.append(locationAsTuple)
+
+            for fishName in fishlist:
+                if fishName in fishDb:
+                    fishDb[fishName].setdefault('locs', list()).append(locationAsTuple)
+
+    return locations
+
 def load_database() -> Database:
-    with open('fish.yaml') as fFile, open('bites.yaml') as bFile, open('locations.yaml') as locFile:
-        fish = yaml.safe_load(fFile)
+    with open('fish_new.yaml') as fFile, open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
+        fishDb = yaml.safe_load(fFile)
         bites = yaml.safe_load(bFile)
         locDb = yaml.safe_load(locFile)
 
-        locations = loc_list_from_dict(locDb)
+        locations: list[LocationType] = parse_locations(locDb, fishDb)
 
         # pprint(locations)
 
-        if not check_database(fish, bites, locations):
+        if not check_database(fishDb, bites, locations):
             raise RuntimeError("Database currupted")
         
-        return (fish, set(bites), set(locations))
+        return (fishDb, set(bites), set(locations))
 
 
 def html_write_row(file, values: list[str]) -> None:
@@ -352,7 +368,7 @@ def main():
 
         fishParams = fishDb[args.fish]
         bites = bites.intersection(fishParams['bites'])
-        locs = locs.intersection(loc_list_from_dict(fishParams['locs']))
+        locs = locs.intersection(fishParams['locs'])
         time = time.intersection(list(fishParams['time']))
         # print(fishParams['depth'])
         depth = depth.intersection(Depth.fromList(fishParams['depth']))
@@ -415,7 +431,7 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
                 for fishName in fishDb:
                     fishParams: dict = fishDb[fishName]
 
-                    if loc in loc_list_from_dict(fishParams['locs']) and bite in fishParams['bites'] and fishParams['time'].find(t) != -1 and depth.intersects(Depth.fromList(fishParams['depth'])):
+                    if loc in fishParams['locs'] and bite in fishParams['bites'] and fishParams['time'].find(t) != -1 and depth.intersects(Depth.fromList(fishParams['depth'])):
                         key = LocBiteTimeTuple((loc, bite, t))
 
                         intermediateResults.setdefault(key, list[str]())
