@@ -6,7 +6,10 @@ import argparse
 import yaml
 # from pprint import pprint
 
+
+
 LocationType = tuple[str, str]
+
 Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locations
 minDepthStep = 0.01
 kMaxDepth = 100
@@ -19,6 +22,7 @@ time_name = {
 }
 
 
+
 def to_location_type(water: str, loc: str) -> LocationType:
     return (water, loc)
 
@@ -29,6 +33,13 @@ def location_name_from_strings(water: str, loc: str) -> str:
 
 def location_name_from_tuple(location: LocationType) -> str:
     return location_name_from_strings(location[0], location[1])
+
+
+def loc_list_to_str_list(locationsList: list[LocationType]) -> list[str]:
+    res = []
+    for item in locationsList:
+        res.append(location_name_from_tuple(item))
+    return res
 
 class Depth:
     low: float
@@ -176,7 +187,7 @@ def to_html_list(items, ordered: bool = False) -> str:
         result += '<ul>\n'
 
     for item in items:
-        result += '    <li>' + item + '</li>\n'
+        result += '    <li>' + str(item) + '</li>\n'
 
     if ordered:
         result += '</ol>\n'
@@ -185,6 +196,7 @@ def to_html_list(items, ordered: bool = False) -> str:
     
     return result
 
+
 def create_html_list_from_time_set(timeset: set[str]) -> str:
     arr = []
     for t in timeset:
@@ -192,11 +204,18 @@ def create_html_list_from_time_set(timeset: set[str]) -> str:
 
     return to_html_list(arr)
 
+
 def html_embed_scripts(htmlFile):
     htmlFile.write('<script type = "text/javascript">\n')
     with open('scripts.js') as sFile:
         htmlFile.write(sFile.read())
     htmlFile.write("</script>\n")
+
+def html_embed_styles(htmlFile):
+    htmlFile.write('  <style>\n')
+    with open('styles.css') as sFile:
+        htmlFile.write(sFile.read())
+    htmlFile.write('  </style>\n')
 
 def write_html_header(htmlFile):
     htmlFile.write('<!DOCTYPE html>\n')
@@ -204,13 +223,7 @@ def write_html_header(htmlFile):
     htmlFile.write('<head>\n')
     htmlFile.write('  <title>Results for searcher</title>\n')
     htmlFile.write('\n')
-    htmlFile.write('  <style>\n')
-    htmlFile.write('    table, th, td {\n')
-    htmlFile.write('      border: 1px solid black;\n')
-    htmlFile.write('      border-collapse: collapse;\n')
-    htmlFile.write('      padding: 7px;\n')
-    htmlFile.write('    }\n')
-    htmlFile.write('  </style>\n')
+    html_embed_styles(htmlFile)
     htmlFile.write('</head>\n')
 
 
@@ -234,19 +247,83 @@ def merge_by_daytime(results) -> dict:
     return mergedTime
 
 
+def merge_by_location(results: dict[tuple, tuple]) -> dict[tuple, tuple]:
+    merged = dict()
+
+    for res in results:
+        key = (res[1], res[2]) # bite, depth
+
+        if key in merged and results[res][1] == merged[key][2] and results[res][0] == merged[key][1]:
+            merged[key][0].append(res[0])
+        else:
+            merged[key] = ([res[0]], results[res][0], results[res][1])
+
+    return merged
+
+
+def merge_by_bite(results) -> dict:
+    merged = dict[Depth]()
+
+    for res in results:
+        key = (res[0], res[2])
+
+        if key in merged and results[res][0] == merged[key][1] and results[res][1] == merged[key][2]:
+            merged[key][0].append(res[1])
+        else:
+            merged[key] = ([res[1]], results[res][0], results[res][1])
+
+    return merged
+
+def print_results(results, maxBycatch: int | None):
+
+    if maxBycatch is None:
+        maxBycatch = 1000
+
+    with open('result.html', 'w', encoding = 'utf-16') as htmlFile:
+        write_html_header(htmlFile)
+
+        htmlFile.write('\n<body>\n')
+        htmlFile.write('<table id="results_table">\n')
+
+        html_table_write_header(htmlFile, ['Локации', 'Наживки', 'Время', 'Глубина', 'Кол-во рыб', 'Рыбы'])
+
+        for res in results:
+
+            if len(results[res][2]) > (maxBycatch + 1):
+                continue
+
+            bites, time, fishes = results[res]
+            fishesStr = to_html_list(fishes)
+            bitesStr = to_html_list(bites)
+
+            # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
+            html_write_row(htmlFile, [location_name_from_tuple(res[0]), bitesStr, create_html_list_from_time_set(time), str(res[1]), len(fishes), fishesStr])
+
+
+        htmlFile.write("</table>\n")
+        html_embed_scripts(htmlFile)
+        htmlFile.write("</body>\n")
+        htmlFile.write("</html>\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Parse fish database and provide filtered table for a fish/bite/location')
     parser.add_argument("-f", "--fish", help="Рыба")
     parser.add_argument("-b", "--bite", help="Наживка")
     parser.add_argument("-l", "--location", help="Локация")
+    parser.add_argument("--maxbycatch", help="Максимальное количество рыб в прилове", type=int)
     args = parser.parse_args()
 
     # print(args.fish)
 
     (fishDb, bitesDb, locationsDb) = load_database()
 
-    if args.bite is not None:
-        bites = set([args.bite])
+    if args.bite is not None and args.bite != '':
+        if args.bite not in bitesDb:
+            print("Ошибка: наживка '{}' не найдена в базе".format(args.bite))
+            return 1
+        else:
+            bites = set([args.bite])
     else:
         bites = bitesDb
         
@@ -266,35 +343,23 @@ def main():
         # print(fishParams['depth'])
         depth = depth.intersection(Depth.fromList(fishParams['depth']))
 
-    # print(bites)
-    # print(locs)
-    # print(time)
-    # print(depth)
+    print(bites)
+    print(locs)
+    print(time)
+    print(depth)
 
     results = process(fishDb, bites, locs, time, depth)
 
     results = merge_by_daytime(results)
 
-    with open('result.html', 'w', encoding = 'utf-16') as htmlFile:
-        write_html_header(htmlFile)
+    # results: tuple(location, bite, depth) -> (time, fishes)
 
-        htmlFile.write('\n<body>\n')
-        htmlFile.write('<table id="results_table">\n')
+    merged = merge_by_bite(results)
 
-        html_table_write_header(htmlFile, ['Водоём', 'Наживка', 'Время', 'Глубина', 'Кол-во рыб', 'Рыбы'])
+    # results: tuple(location, depth) -> tuple(bite, time, fishes)
 
-        for res in results:
-            time, fishes = results[res]
-            fishesStr = to_html_list(fishes)
+    print_results(merged, args.maxbycatch)
 
-            # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
-            html_write_row(htmlFile, [location_name_from_tuple(res[0]), res[1], create_html_list_from_time_set(time), str(res[2]), len(fishes), fishesStr])
-
-
-        htmlFile.write("</table>\n")
-        html_embed_scripts(htmlFile)
-        htmlFile.write("</body>\n")
-        htmlFile.write("</html>\n")
 
 def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[str]]: 
     results = dict[CastParams, list[str]]()
@@ -307,6 +372,7 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
             for t in time:
                 # print("    Time: {}".format(time_name[t]))
                 depths = [depth]
+                newDepths = depths.copy()
 
                 for fishName in fishDb:
                     loopIndex = loopIndex + 1
@@ -322,7 +388,6 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
 
                         # print("Match")
 
-                        newSet = None
                         for d in depths:
                             if d.intersects(fDepth):
                                 common = d.intersection(fDepth)
@@ -335,12 +400,16 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
 
                                 if (common != d):
                                     newSet = d.split(common)
+                                    newDepths.remove(d)
+                                    newDepths.extend(newSet)
 
-                                    # for k in results.keys():
-                                    #     print(k)
-                                    
-                                    # print('')
-                                    # print(oldKey)
+                                    # if (Depth(1, 1.49) in newSet) and bite == 'Мякиш хлеба':
+                                    #     for k in results.keys():
+                                    #         print(k)
+                                        
+                                    #     print('')
+                                    #     print(oldKey)
+                                    #     print(results[oldKey])
 
                                     if oldKey in results:
                                         fishes = results[oldKey].copy()
@@ -379,8 +448,7 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
                                 #     print(r)
                                 #     print(results[r])
 
-                        if newSet is not None:
-                            depths = newSet
+                        depths = newDepths.copy()
     return results
 
 if __name__ == "__main__":
