@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import yaml
+from enum import Enum
 # from pprint import pprint
 
 
-
 LocationType = tuple[str, str]
+LocBiteTimeTuple = tuple[str, str, str]
 
 Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locations
 minDepthStep = 0.01
@@ -21,7 +22,14 @@ time_name = {
     "н": "ночь"
 }
 
+class EdgeType(Enum):
+    LOW = 1
+    HIGH = 2
 
+    def __lt__(self, other):
+        if self.__class__ is other.__class__:
+            return self.value < other.value
+        return NotImplemented
 
 def to_location_type(water: str, loc: str) -> LocationType:
     return (water, loc)
@@ -86,6 +94,9 @@ class Depth:
     
     def __hash__(self) -> int:
         return hash(self.low) + 1000 * hash(self.high)
+    
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class CastParams:
@@ -108,6 +119,9 @@ class CastParams:
     
     def __str__(self) -> str:
         return "Loc: " + location_name_from_tuple(self.loc) + '\nBite: ' + self.bite + '\nTime: ' + time_name[self.time] + '\nDepth: ' + str(self.depth)
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 def check_database(fishDb: dict, bites: list, locations: list) -> bool:
@@ -350,7 +364,16 @@ def main():
 
     results = process(fishDb, bites, locs, time, depth)
 
-    results = merge_by_daytime(results)
+    if args.fish is not None:
+        cleanedUp = dict()
+
+        for res in results:
+            if args.fish in results[res]:
+                cleanedUp[res] = results[res]
+    else:
+        cleanedUp = results
+
+    results = merge_by_daytime(cleanedUp)
 
     # results: tuple(location, bite, depth) -> (time, fishes)
 
@@ -361,9 +384,27 @@ def main():
     print_results(merged, args.maxbycatch)
 
 
+def depths_from_edges(edges) -> list[Depth]:
+    depths = []
+    
+    lowEdge = 0
+    lastEdgeType = EdgeType.HIGH
+    for d in edges:
+        if d[1] == EdgeType.HIGH: # 2
+            depths.append(Depth(lowEdge, d[0]))
+            lowEdge = d[0] + minDepthStep
+
+        if d[1] == EdgeType.LOW: # 1
+            if lastEdgeType == EdgeType.LOW:
+                depths.append(Depth(lowEdge, d[0] - minDepthStep))
+
+            lowEdge = d[0]
+                
+        lastEdgeType = d[1]
+    return depths
+
 def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[str]]: 
-    results = dict[CastParams, list[str]]()
-    loopIndex = 0
+    intermediateResults = dict[LocBiteTimeTuple, list]()
 
     for loc in locs:
         # print("Location: {}".format(loc))
@@ -371,84 +412,47 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
             # print("  Bite: {}".format(bite))
             for t in time:
                 # print("    Time: {}".format(time_name[t]))
-                depths = [depth]
-                newDepths = depths.copy()
-
                 for fishName in fishDb:
-                    loopIndex = loopIndex + 1
+                    fishParams: dict = fishDb[fishName]
 
-                    # print("      Fish: {}".format(fishName))
-                    # print("*** LOOP INDEX: " + str(loopIndex) + " ***")
-                    
-                    fishParams = fishDb[fishName]
-                    
-                    if loc in loc_list_from_dict(fishParams['locs']) and bite in fishParams['bites'] and t in list(fishParams['time']):
-                        # check depth
-                        fDepth = Depth.fromList(fishParams['depth'])
+                    if loc in loc_list_from_dict(fishParams['locs']) and bite in fishParams['bites'] and fishParams['time'].find(t) != -1 and depth.intersects(Depth.fromList(fishParams['depth'])):
+                        key = LocBiteTimeTuple((loc, bite, t))
 
-                        # print("Match")
+                        intermediateResults.setdefault(key, list[str]())
+                        intermediateResults[key].append(fishName)
 
-                        for d in depths:
-                            if d.intersects(fDepth):
-                                common = d.intersection(fDepth)
+    results = dict()
 
-                                if common is None:
-                                    continue
+    for key in intermediateResults:
+        edges = [(depth.low, EdgeType.LOW), (depth.high, EdgeType.HIGH)]
 
-                                key = CastParams(loc, bite, t, common)
-                                oldKey = CastParams(loc, bite, t, d)
+        for fishName in intermediateResults[key]:
+            fishParams: dict = fishDb[fishName]
+            fishDepths = [(fishParams['depth'][0], EdgeType.LOW), (fishParams['depth'][1], EdgeType.HIGH)]
 
-                                if (common != d):
-                                    newSet = d.split(common)
-                                    newDepths.remove(d)
-                                    newDepths.extend(newSet)
+            for d in fishDepths:
+                if d not in edges:
+                    edges.append(d)
 
-                                    # if (Depth(1, 1.49) in newSet) and bite == 'Мякиш хлеба':
-                                    #     for k in results.keys():
-                                    #         print(k)
-                                        
-                                    #     print('')
-                                    #     print(oldKey)
-                                    #     print(results[oldKey])
+        edges.sort(key=lambda item: item[1])
+        edges.sort(key=lambda item: item[0])
 
-                                    if oldKey in results:
-                                        fishes = results[oldKey].copy()
-                                        del results[oldKey]
+        # print(key)
+        # print(edges)
 
-                                        # print(fishes)
-                                    
-                                        for newDepth in newSet:
-                                            newKey = CastParams(loc, bite, t, newDepth)
-                                            results[newKey] = fishes.copy()
-                                            
-                                # print("Match 2")
+        depths = depths_from_edges(edges)
 
-                                # print("--- BEFORE ---")
+        # print(depths)
 
-                                # for r in results:
-                                #     print(r)
-                                #     print(results[r])
+        for d in depths:
 
-                                results.setdefault(key, []).append(fishName)
+            resKey = CastParams(key[0], key[1], key[2], d)
+            results.setdefault(resKey, list[str]())
 
-                                # if key in results and results[key] is not None:
-                                #     # print("appending")
-                                #     # print(key)
-                                #     # print(results[key])
-                                #     # print(fishName)
-                                #     results[key].append(fishName)
-                                    
-                                # else:
-                                #     print("Adding")
-                                #     print(key)
-                                #     print(fishName)
-                                #     results[key] = [fishName]
-                                # print("--- AFTER ---")
-                                # for r in results:
-                                #     print(r)
-                                #     print(results[r])
+            for fishName in intermediateResults[key]:
+                if d.intersects(Depth.fromList(fishDb[fishName]['depth'])):
+                    results[resKey].append(fishName)
 
-                        depths = newDepths.copy()
     return results
 
 if __name__ == "__main__":
