@@ -73,7 +73,7 @@ class Depth:
         return Depth(max(self.low, other.low), min(self.high, other.high))
         
     def __str__(self) -> str:
-        return str(self.low) + '-' + str(self.high)
+        return f"{float(self.low):.2f} - {float(self.high):.2f}"
         
     def split(self, intersection: Depth) -> list[Depth]:
         result = [intersection]
