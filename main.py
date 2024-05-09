@@ -13,7 +13,7 @@ LocBiteTimeTuple = tuple[str, str, str]
 
 Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locations
 minDepthStep = 0.01
-kMaxDepth = 100
+kMaxDepth = 1000
 
 time_name = {
     "у": "утро",
