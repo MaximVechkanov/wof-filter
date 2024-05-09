@@ -14,6 +14,7 @@ LocBiteTimeTuple = tuple[str, str, str]
 Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locations
 minDepthStep = 0.01
 kMaxDepth = 1000
+minFloatDepth = 0.4
 
 time_name = {
     "у": "утро",
@@ -126,6 +127,11 @@ class CastParams:
 
 def check_database(fishDb: dict, bites: list, locations: list) -> bool:
     for fishName in fishDb:
+
+        if len(fishDb[fishName]['depth']) != 2:
+            print("Ошибка: Некорректно указана глубина для рыбы '{}'".format(fishName))
+            return False
+
         fishBites = fishDb[fishName].get('bites')
 
         if fishBites is None:
@@ -182,6 +188,9 @@ def parse_locations(locDb: dict, fishDb: dict) -> list[LocationType]:
 def load_database() -> Database:
     with open('fish_new.yaml') as fFile, open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
         fishDb = yaml.safe_load(fFile)
+
+        print(f"Num fishes in database: {len(fishDb)}")
+
         bites = yaml.safe_load(bFile)
         locDb = yaml.safe_load(locFile)
 
@@ -290,7 +299,7 @@ def merge_by_bite(results) -> dict:
 
     return merged
 
-def print_results(results, maxBycatch: int | None):
+def print_results(results: dict, maxBycatch: int | None):
 
     if maxBycatch is None:
         maxBycatch = 1000
@@ -309,6 +318,9 @@ def print_results(results, maxBycatch: int | None):
             bites = results[resKey]
 
             if len(fishes) > (maxBycatch + 1):
+                continue
+
+            if depth.high < minFloatDepth:
                 continue
 
             fishesStr = to_html_list(fishes)
