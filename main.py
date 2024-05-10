@@ -316,6 +316,7 @@ def print_results(results: dict, maxBycatch: int | None):
 
             loc, time, depth, fishes = resKey
             bites = results[resKey]
+            bites.sort()
 
             if len(fishes) > (maxBycatch + 1):
                 continue
