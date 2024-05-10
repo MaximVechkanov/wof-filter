@@ -23,6 +23,12 @@ time_name = {
     "н": "ночь"
 }
 
+bottomType = {
+    "only": "Только дно",
+    "near": "Придонный слой",
+    "no": "Не со дна"
+}
+
 class EdgeType(Enum):
     LOW = 1
     HIGH = 2
@@ -299,7 +305,7 @@ def merge_by_bite(results) -> dict:
 
     return merged
 
-def print_results(results: dict, maxBycatch: int | None):
+def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
 
     if maxBycatch is None:
         maxBycatch = 1000
@@ -323,6 +329,14 @@ def print_results(results: dict, maxBycatch: int | None):
 
             if depth.high < minFloatDepth:
                 continue
+
+            fishes = list(fishes)
+            fishes.sort()
+
+            for idx, fishName in enumerate(fishes):
+                bottomRelation = fishDb[fishName].get('bottom')
+                if bottomRelation != None:
+                    fishes[idx] = f"{fishName} ({bottomType[bottomRelation]})"
 
             fishesStr = to_html_list(fishes)
             bitesStr = to_html_list(bites)
@@ -404,7 +418,7 @@ def main():
     print("Final results length: " + str(len(merged)))
     # results: tuple(location, depth) -> tuple(bite, time, fishes)
 
-    print_results(merged, args.maxbycatch)
+    print_results(merged, fishDb, args.maxbycatch)
 
 
 def depths_from_edges(edges) -> list[Depth]:
@@ -480,9 +494,3 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
 
 if __name__ == "__main__":
     main()
-    # test = dict()
-    # test[6] = [10]
-    # test.setdefault(6, [11]).append(20)
-    # test.setdefault(5, [11]).append(20)
-
-    # print(test)
