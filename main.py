@@ -24,9 +24,10 @@ time_name = {
 }
 
 bottomType = {
+    
     "only": "Только дно",
     "near": "Придонный слой",
-    "no": "Не со дна"
+    "nope": "Не со дна"
 }
 
 class EdgeType(Enum):
