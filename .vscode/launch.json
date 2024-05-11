@@ -5,14 +5,24 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File with Arguments",
+            "name": "Python Debugger: main.py",
             "type": "debugpy",
             "request": "launch",
             "program": "main.py",
             // "program": "${file}",
             "console": "integratedTerminal",
-            "args": "-f \"Карась золотой\" -b \"\" --maxbycatch 1"//"${command:pickArgs}"
+            "args": "-f \"Пескарь обыкновенный\" -b \"\" --maxbycatch 0"//"${command:pickArgs}"
             // "args": "${command:pickArgs}"
-        }
+        },
+
+        // {
+        //     "name": "Python Debugger: Current File with Arguments",
+        //     "type": "debugpy",
+        //     "request": "launch",
+        //     "program": "${file}",
+        //     "console": "integratedTerminal",
+        //     // "args": "${command:pickArgs}"
+        //     "args": "https://wof.fish/forum/index.php/topic/161-oansi/"
+        // }
     ]
 }
