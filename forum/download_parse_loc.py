@@ -9,10 +9,16 @@ removed_chars = ['\xa0']
 
 fish_list_begin_label = '<div class="bbc_spoiler_wrapper"><div class="bbc_spoiler_content" style="display:none;">'
 
+
 def main():
     url = sys.argv[1]
-    rsp = urllib.request.urlopen(url)
-    soup = BeautifulSoup(rsp.read())
+
+    if url.find('http') != -1:
+        rsp = urllib.request.urlopen(url)
+        soup = BeautifulSoup(rsp.read(), "html.parser")
+    else:
+        with open(url) as file:
+            soup = BeautifulSoup(file.read(), "html.parser")
     
     body: str = soup.body.decode()
 
@@ -54,6 +60,9 @@ def main():
         rawLocName = l[:l.find('</strong>')]
         locName = ''.join(char for char in rawLocName if char not in removed_chars)
 
+        soup = BeautifulSoup(locName, "html.parser")
+        locName = soup.get_text()
+
         print(f"  {locName}")
 
         locations[locName] = list()
@@ -79,7 +88,7 @@ def main():
     # fileName = url[url.find('topic/')+5:].strip('/') + '.yaml'
     fileName = waterName + '.yaml'
 
-    with open(fileName, 'w', encoding='utf-8') as file:
+    with open('locations_db' + '/' + fileName, 'w', encoding='utf-8') as file:
         file.write(f"{waterName}:\n")
         for water in locations:
             file.write(f"  {water}:\n")
