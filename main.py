@@ -376,7 +376,9 @@ def main():
     time = set('удвн')
     depth = Depth(0, kMaxDepth)
 
-    if args.fish is not None:
+    isFishSpecified = args.fish is not None and args.fish != ''
+
+    if isFishSpecified:
         if (args.fish not in fishDb):
             print("Ошибка: рыба '{}' не найдена в базе".format(args.fish))
             return 1
@@ -397,14 +399,12 @@ def main():
 
     # print("Initial results length: " + str(len(initialResults)))
 
-    if args.fish is not None:
-        cleanedUp = dict()
+    
+    cleanedUp = dict()
 
-        for res in initialResults:
-            if args.fish in initialResults[res]:
-                cleanedUp[res] = frozenset(initialResults[res])
-    else:
-        cleanedUp = initialResults
+    for res in initialResults:
+        if not isFishSpecified or args.fish in initialResults[res]:
+            cleanedUp[res] = frozenset(initialResults[res])
 
     # print("Cleaned up results length: " + str(len(cleanedUp)))
 
@@ -485,11 +485,10 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
         for d in depths:
 
             resKey = CastParams(key[0], key[1], key[2], d)
-            results.setdefault(resKey, list[str]())
 
             for fishName in intermediateResults[key]:
                 if d.intersects(Depth.fromList(fishDb[fishName]['depth'])):
-                    results[resKey].append(fishName)
+                    results.setdefault(resKey, list[str]()).append(fishName)
 
     return results
 
