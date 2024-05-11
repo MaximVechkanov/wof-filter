@@ -29,7 +29,7 @@ def main():
     loc_pic_pos = body.find('href="https://yapx.ru')
     sub = body[loc_pic_pos:]
 
-    if mainListStart := sub.find('Список рыбы по локациям') == -1:
+    if (mainListStart := sub.find('Список рыбы по локациям')) == -1:
         mainListStart = sub.find('Список рыб по локациям')
 
     sub = sub[mainListStart:]
