@@ -1,10 +1,11 @@
 #!/bin/python3
 
 from __future__ import annotations
-
 import argparse
 import yaml
 from enum import Enum
+import my_utilities
+import os
 # from pprint import pprint
 
 
@@ -15,6 +16,7 @@ Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locati
 minDepthStep = 0.01
 kMaxDepth = 1000
 minFloatDepth = 0.4
+fish_db_dir = 'fish_db'
 
 time_name = {
     "у": "утро",
@@ -131,6 +133,8 @@ class CastParams:
     def __repr__(self) -> str:
         return str(self)
 
+def get_max_depth(locDb, location) -> float:
+    return 1000
 
 def check_database(fishDb: dict, bites: list, locations: list) -> bool:
     for fishName in fishDb:
@@ -192,9 +196,25 @@ def parse_locations(locDb: dict, fishDb: dict) -> list[LocationType]:
 
     return locations
 
+def load_fish_database() -> dict:
+    result = dict()
+
+    for filename in os.listdir(fish_db_dir):
+        fullFileName = os.path.join(fish_db_dir, filename)
+
+        # print(filename, ' ', fullFileName)
+
+        with open(fullFileName) as file:
+            newData = yaml.safe_load(file)
+
+            if newData is not None:
+                result.update(newData)
+
+    return result
+
 def load_database() -> Database:
-    with open('fish_new.yaml') as fFile, open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
-        fishDb = yaml.safe_load(fFile)
+    with open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
+        fishDb = load_fish_database()
 
         print(f"Num fishes in database: {len(fishDb)}")
 
