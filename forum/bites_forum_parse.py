@@ -72,7 +72,7 @@ with open('bites_forum') as file:
 
     del pics[-1]
 
-    # print(pics)
+    print("Num bites: ", len(pics))
 
     for p in pics:
         if p not in bites:
