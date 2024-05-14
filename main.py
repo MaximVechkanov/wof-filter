@@ -18,6 +18,8 @@ kMaxDepth = 1000
 minFloatDepth = 0.4
 fish_db_dir = 'fish_db'
 
+global_loc_db = dict()
+
 time_name = {
     "у": "утро",
     "д": "день",
@@ -108,7 +110,6 @@ class Depth:
     def __repr__(self) -> str:
         return str(self)
 
-
 class CastParams:
     loc: LocationType
     bite: str
@@ -133,8 +134,8 @@ class CastParams:
     def __repr__(self) -> str:
         return str(self)
 
-def get_max_depth(locDb, location) -> float:
-    return 1000
+def get_max_depth(locDb, location: LocationType) -> float:
+    return locDb[location[0]][location[1]]['max-depth']
 
 def check_database(fishDb: dict, bites: list, locations: list) -> bool:
     for fishName in fishDb:
@@ -168,23 +169,12 @@ def check_database(fishDb: dict, bites: list, locations: list) -> bool:
                 return False
     return True
 
-
-def loc_list_from_dict(locDb: dict) -> list[LocationType]:
-    locations = []
-
-    for water in locDb:
-        for loc in locDb[water]:
-            locations.append((water, loc))
-
-    return locations
-
-
 def parse_locations(locDb: dict, fishDb: dict) -> list[LocationType]:
     locations = []
 
     for water in locDb:
         for loc in locDb[water]:
-            fishlist = locDb[water][loc]
+            fishlist = locDb[water][loc]['fish']
 
             locationAsTuple = (water, loc)
 
@@ -220,6 +210,9 @@ def load_database() -> Database:
 
         bites = yaml.safe_load(bFile)
         locDb = yaml.safe_load(locFile)
+
+        global global_loc_db
+        global_loc_db = locDb
 
         locations: list[LocationType] = parse_locations(locDb, fishDb)
 
@@ -457,7 +450,7 @@ def depths_from_edges(edges) -> list[Depth]:
                 depths.append(Depth(lowEdge, d[0] - minDepthStep))
 
             lowEdge = d[0]
-                
+
         lastEdgeType = d[1]
     return depths
 
@@ -482,11 +475,26 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
     results = dict()
 
     for key in intermediateResults:
-        edges = [(depth.low, EdgeType.LOW), (depth.high, EdgeType.HIGH)]
+
+        location = key[0]
+        maxLocationDepth = get_max_depth(global_loc_db, location)
+
+        high = depth.high if depth.high < maxLocationDepth else maxLocationDepth
+
+        edges = [(depth.low, EdgeType.LOW), (high, EdgeType.HIGH)]
+
 
         for fishName in intermediateResults[key]:
             fishParams: dict = fishDb[fishName]
-            fishDepths = [(fishParams['depth'][0], EdgeType.LOW), (fishParams['depth'][1], EdgeType.HIGH)]
+            
+            fishDepth = Depth.fromList(fishParams['depth'])
+            if (fishDepth.low > maxLocationDepth):
+                continue
+            
+            if (fishDepth.high > maxLocationDepth):
+                fishDepth.high = maxLocationDepth
+
+            fishDepths = [(fishDepth.low, EdgeType.LOW), (fishDepth.high, EdgeType.HIGH)]
 
             for d in fishDepths:
                 if d not in edges:
