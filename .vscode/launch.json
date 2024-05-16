@@ -11,7 +11,7 @@
             "program": "main.py",
             // "program": "${file}",
             "console": "integratedTerminal",
-            "args": "-f \"Пескарь обыкновенный\" -b \"\" --maxbycatch 0"//"${command:pickArgs}"
+            "args": "-f \"Карп африканский\" -b \"Кукуруза\" --location \"\" --maxbycatch 0"//"${command:pickArgs}"
             // "args": "${command:pickArgs}"
         },
 
