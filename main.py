@@ -363,6 +363,8 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
         htmlFile.write("</body>\n")
         htmlFile.write("</html>\n")
 
+def find_in_location(location: LocationType, name: str):
+    return location[0] == name or location[1] == name
 
 def main():
     parser = argparse.ArgumentParser(description='Parse fish database and provide filtered table for a fish/bite/location')
@@ -385,9 +387,17 @@ def main():
     else:
         bites = bitesDb
         
-    locs = locationsDb
+    
     time = set('удвн')
     depth = Depth(0, kMaxDepth)
+
+    if args.location is not None and args.location != '':
+        locs = set()
+        for loc in locationsDb:
+            if find_in_location(loc, args.location):
+                locs.add(loc)
+    else:
+        locs = locationsDb
 
     isFishSpecified = args.fish is not None and args.fish != ''
 
