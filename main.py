@@ -371,7 +371,7 @@ def main():
     parser.add_argument("-f", "--fish", help="Рыба")
     parser.add_argument("-b", "--bite", help="Наживка")
     parser.add_argument("-l", "--location", help="Локация")
-    parser.add_argument("--maxbycatch", help="Максимальное количество рыб в прилове", type=int)
+    parser.add_argument("-m", "--maxbycatch", help="Максимальное количество рыб в прилове", type=int)
     args = parser.parse_args()
 
     # print(args.fish)
