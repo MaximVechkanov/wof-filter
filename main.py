@@ -239,13 +239,16 @@ def html_table_write_header(file, values: list[str]) -> None:
 
 
 def to_html_list(items, ordered: bool = False) -> str:
+    pre = list(items)
+    pre.sort()
+    
     result = ""
     if ordered:
         result += '<ol>\n'
     else:
         result += '<ul>\n'
 
-    for item in items:
+    for item in pre:
         result += '    <li>' + str(item) + '</li>\n'
 
     if ordered:

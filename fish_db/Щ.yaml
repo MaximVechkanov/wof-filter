@@ -13,7 +13,7 @@
 Щука обыкновенная:
   time: удв
   depth: [1, 9]
-  bottom: no
+  bottom: nope
   bites:
     - Живец
     - Вяленая рыба
