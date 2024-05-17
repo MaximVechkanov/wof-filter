@@ -463,6 +463,11 @@ def split_by_layer(merged: dict, fishDb: dict):
 
     return results
 
+def print_fish_in_db(fishDb: dict):
+    l = list(fishDb.keys())
+    l.sort()
+    for idx, f in enumerate(l):
+        print(f"{idx + 1}. {f}")
 
 def main():
     parser = argparse.ArgumentParser(description='Parse fish database and provide filtered table for a fish/bite/location')
@@ -475,6 +480,9 @@ def main():
     # print(args.fish)
 
     (fishDb, bitesDb, locationsDb) = load_database()
+
+    # print_fish_in_db(fishDb)
+    # return 0
 
     if args.bite is not None and args.bite != '':
         if args.bite not in bitesDb:
