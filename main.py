@@ -28,7 +28,6 @@ time_name = {
 }
 
 bottomType = {
-    
     "only": "Только дно",
     "near": "Придонный слой",
     "nope": "Не со дна"
@@ -42,6 +41,22 @@ class EdgeType(Enum):
         if self.__class__ is other.__class__:
             return self.value < other.value
         return NotImplemented
+
+class LayerType(Enum):
+    ALL = 0
+    UPPER = 1
+    LOWER = 2
+    BOTTOM = 3
+
+    def __str__(self):
+        match(self):
+            case LayerType.ALL: return "Все слои"
+            case LayerType.UPPER: return "Верхний слой"
+            case LayerType.LOWER: return "Придонный слой"
+            case LayerType.BOTTOM: return "Дно"
+    
+    def __lt__(self, other):
+        return self.value < other.value
 
 def to_location_type(water: str, loc: str) -> LocationType:
     return (water, loc)
@@ -266,7 +281,6 @@ def create_html_list_from_time_set(timeset: set[str]) -> str:
 
     return to_html_list(arr)
 
-
 def html_embed_scripts(htmlFile):
     htmlFile.write('<script type = "text/javascript">\n')
     with open('scripts.js') as sFile:
@@ -333,12 +347,14 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
         htmlFile.write('\n<body>\n')
         htmlFile.write('<table id="results_table">\n')
 
-        html_table_write_header(htmlFile, ['Локации', 'Наживки', 'Время', 'Глубина', 'Кол-во рыб', 'Рыбы'])
+        html_table_write_header(htmlFile, ['Локация', 'Наживки', 'Время', 'Глубина', 'Слой', 'Кол-во рыб', 'Рыбы'])
 
         for resKey in results:
 
-            loc, time, depth, fishes = resKey
-            bites = results[resKey]
+            loc, time, depth, bitesSet, layer = resKey
+
+            fishes = results[resKey]
+            bites = list(bitesSet)
             bites.sort()
 
             if len(fishes) > (maxBycatch + 1):
@@ -347,19 +363,30 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
             if depth.high < minFloatDepth:
                 continue
 
-            fishes = list(fishes)
             fishes.sort()
 
-            for idx, fishName in enumerate(fishes):
-                bottomRelation = fishDb[fishName].get('bottom')
-                if bottomRelation != None:
-                    fishes[idx] = f"{fishName} ({bottomType[bottomRelation]})"
+            # for idx, fishName in enumerate(fishes):
+            #     bottomRelation = fishDb[fishName].get('bottom')
+            #     if bottomRelation != None:
+            #         fishes[idx] = f"{fishName} ({bottomType[bottomRelation]})"
 
             fishesStr = to_html_list(fishes)
             bitesStr = to_html_list(bites)
 
+            if type(layer) is LayerType:
+                layerStr = str(layer)
+            else:
+                layerStr = to_html_list(layer)
+
             # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
-            html_write_row(htmlFile, [location_name_from_tuple(loc), bitesStr, create_html_list_from_time_set(time), str(depth), len(fishes), fishesStr])
+            html_write_row(htmlFile, [
+                location_name_from_tuple(loc),
+                bitesStr,
+                create_html_list_from_time_set(time),
+                str(depth),
+                layerStr,
+                len(fishes),
+                fishesStr])
 
         htmlFile.write("</table>\n")
         html_embed_scripts(htmlFile)
@@ -368,6 +395,74 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
 
 def find_in_location(location: LocationType, name: str):
     return location[0] == name or location[1] == name
+
+def can_catch_in_layer(bottomRelation: str | None, layer: LayerType) -> bool:
+    if bottomRelation is None:
+        return True
+    
+    if layer == LayerType.ALL:
+        return True
+    
+    if bottomRelation == "nope":
+        if layer == LayerType.BOTTOM:
+            return False
+        else:
+            return True
+    elif bottomRelation == "only":
+        if layer == LayerType.BOTTOM:
+            return True
+        else:
+            return False
+    elif bottomRelation == "near":
+        if layer == LayerType.UPPER:
+            return False
+        else:
+            return True
+
+def split_by_layer(merged: dict, fishDb: dict):
+    
+    results = dict()
+    
+    for key in merged:
+        loc, time, depth, fishes = key
+
+        hasLayerDiff = False
+        for f in fishes:
+            if fishDb[f].get('bottom') is not None:
+                hasLayerDiff = True
+
+        if not hasLayerDiff:
+            newKey = (loc, time, depth, frozenset(merged[key]), LayerType.ALL)
+            results[newKey] = fishes
+        else:
+            for layer in [LayerType.BOTTOM, LayerType.LOWER, LayerType.UPPER]:
+
+                newKey = (loc, time, depth, frozenset(merged[key]), layer)
+
+                for f in fishes:
+                    if can_catch_in_layer(fishDb[f].get('bottom'), layer):
+                        results.setdefault(newKey, list()).append(f)
+    
+    merged = dict()
+    for resKey in results:
+        loc, time, depth, bitesSet, layer = resKey
+        fishes = results[resKey]
+
+        key = (loc, time, depth, frozenset(fishes), bitesSet)
+        if key not in merged:
+            merged[key] = [layer]
+        else:
+            merged[key].append(layer)
+
+    results = dict()
+    for oldKey in merged:
+        loc, time, depth, fishes, bitesSet = oldKey
+        layers = frozenset(merged[oldKey])
+        newKey = (loc, time, depth, bitesSet, layers)
+        results[newKey] = list(fishes)
+
+    return results
+
 
 def main():
     parser = argparse.ArgumentParser(description='Parse fish database and provide filtered table for a fish/bite/location')
@@ -434,18 +529,22 @@ def main():
 
     # print("Cleaned up results length: " + str(len(cleanedUp)))
 
-    meggedByTime = merge_by_daytime(cleanedUp)
+    mergedByTime = merge_by_daytime(cleanedUp)
 
     # print("merge_by_daytime results length: " + str(len(meggedByTime)))
 
-    # results: tuple(location, bite, depth) -> (time, fishes)
+    merged = merge_by_bite(mergedByTime)
 
-    merged = merge_by_bite(meggedByTime)
+    print("Results length after all merges: " + str(len(merged)))
 
-    print("Final results length: " + str(len(merged)))
-    # results: tuple(location, depth) -> tuple(bite, time, fishes)
+    layered = split_by_layer(merged, fishDb)
 
-    print_results(merged, fishDb, args.maxbycatch)
+    if isFishSpecified:
+        cleanedUp = {key: value for key, value in layered.items() if args.fish in value}
+    else:
+        cleanedUp = layered
+
+    print_results(cleanedUp, fishDb, args.maxbycatch)
 
 
 def depths_from_edges(edges) -> list[Depth]:
