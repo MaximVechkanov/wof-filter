@@ -347,7 +347,7 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
         htmlFile.write('\n<body>\n')
         htmlFile.write('<table id="results_table">\n')
 
-        html_table_write_header(htmlFile, ['Локация', 'Наживки', 'Время', 'Глубина', 'Слой', 'Кол-во рыб', 'Рыбы'])
+        html_table_write_header(htmlFile, ['Локация', 'Макс. глубина', 'Наживки', 'Время', 'Глубина', 'Слой', 'Рыбы', 'Кол-во рыб'])
 
         for resKey in results:
 
@@ -378,15 +378,18 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
             else:
                 layerStr = to_html_list(layer)
 
+            
+
             # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
             html_write_row(htmlFile, [
                 location_name_from_tuple(loc),
+                get_max_depth(global_loc_db, loc),
                 bitesStr,
                 create_html_list_from_time_set(time),
                 str(depth),
                 layerStr,
-                len(fishes),
-                fishesStr])
+                fishesStr,
+                len(fishes)])
 
         htmlFile.write("</table>\n")
         html_embed_scripts(htmlFile)
