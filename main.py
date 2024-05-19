@@ -440,7 +440,7 @@ def split_by_layer(merged: dict, fishDb: dict):
 
         if not hasLayerDiff:
             newKey = (loc, time, depth, frozenset(merged[key]), LayerType.ALL)
-            results[newKey] = fishes
+            results[newKey] = fishes.copy()
         else:
             for layer in [LayerType.BOTTOM, LayerType.LOWER, LayerType.UPPER]:
 
@@ -566,19 +566,20 @@ def depths_from_edges(edges) -> list[Depth]:
     depths = []
     
     lowEdge = 0
-    lastEdgeType = EdgeType.HIGH
+    nesting = 0
     for d in edges:
         if d[1] == EdgeType.HIGH: # 2
+            if nesting == 0:
+                raise "WTF"
             depths.append(Depth(lowEdge, d[0]))
             lowEdge = d[0] + minDepthStep
-
+            nesting -= 1
         if d[1] == EdgeType.LOW: # 1
-            if lastEdgeType == EdgeType.LOW:
+            if lowEdge != d[0] and nesting != 0:
                 depths.append(Depth(lowEdge, d[0] - minDepthStep))
-
             lowEdge = d[0]
+            nesting += 1
 
-        lastEdgeType = d[1]
     return depths
 
 def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[str]]: 
@@ -624,18 +625,18 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
             fishDepths = [(fishDepth.low, EdgeType.LOW), (fishDepth.high, EdgeType.HIGH)]
 
             for d in fishDepths:
-                if d not in edges:
-                    edges.append(d)
+                # if d not in edges:
+                edges.append(d)
 
         edges.sort(key=lambda item: item[1])
         edges.sort(key=lambda item: item[0])
 
-        # print(key)
-        # print(edges)
+        print(key)
+        print(edges)
 
         depths = depths_from_edges(edges)
 
-        # print(depths)
+        print(depths)
 
         for d in depths:
 
