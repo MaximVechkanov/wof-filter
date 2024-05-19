@@ -241,8 +241,11 @@ def load_database() -> Database:
 
 def html_write_row(file, values: list[str]) -> None:
     file.write("<tr>\n")
-    for item in values:
-        file.write("  <td>" + str(item) + "</td>" + '\n')
+    for idx, item in enumerate(values):
+        file.write("  <td")
+        if (idx == 0):
+            file.write(' valign="top"')
+        file.write(">" + str(item) + "</td>" + '\n')
     file.write("</tr>\n")
 
 
@@ -347,7 +350,7 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
         htmlFile.write('\n<body>\n')
         htmlFile.write('<table id="results_table">\n')
 
-        html_table_write_header(htmlFile, ['Локация', 'Макс. глубина', 'Наживки', 'Время', 'Глубина', 'Слой', 'Рыбы', 'Кол-во рыб'])
+        html_table_write_header(htmlFile, ['Управление', 'Локация', 'Макс. глубина', 'Наживки', 'Время', 'Глубина', 'Слой', 'Рыбы', 'Кол-во рыб'])
 
         for resKey in results:
 
@@ -382,6 +385,7 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
 
             # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
             html_write_row(htmlFile, [
+                '<button onclick="removeRow(this)">Удалить</button>',
                 location_name_from_tuple(loc),
                 get_max_depth(global_loc_db, loc),
                 bitesStr,

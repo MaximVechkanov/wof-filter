@@ -5,5 +5,10 @@ table, th, td {
 }
 
 ul li {
-    margin-bottom: 3px;
+  margin-bottom: 3px;
+}
+
+button {
+  /* border: none; */
+  cursor: pointer;
 }

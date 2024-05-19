@@ -52,4 +52,8 @@ function sortTable(n) {
         }
       }
     }
-  }
+}
+
+function removeRow(btn) {
+  btn.closest("tr").remove();
+}
