@@ -243,7 +243,7 @@ def html_write_row(file, values: list[str]) -> None:
     file.write("<tr>\n")
     for idx, item in enumerate(values):
         file.write("  <td")
-        if (idx == 0):
+        if (idx == len(values) - 1):
             file.write(' valign="top"')
         file.write(">" + str(item) + "</td>" + '\n')
     file.write("</tr>\n")
@@ -296,11 +296,11 @@ def html_embed_styles(htmlFile):
         htmlFile.write(sFile.read())
     htmlFile.write('  </style>\n')
 
-def write_html_header(htmlFile):
+def write_html_header(htmlFile, title):
     htmlFile.write('<!DOCTYPE html>\n')
     htmlFile.write('<html>\n')
     htmlFile.write('<head>\n')
-    htmlFile.write('  <title>Results for searcher</title>\n')
+    htmlFile.write(f'  <title>{title}</title>\n')
     htmlFile.write('\n')
     html_embed_styles(htmlFile)
     htmlFile.write('</head>\n')
@@ -339,18 +339,21 @@ def merge_by_bite(results) -> dict:
 
     return merged
 
-def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
+def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: int | None):
 
     if maxBycatch is None:
         maxBycatch = 1000
 
+    if title is None:
+        title = "Search results table"
+
     with open('result.html', 'w', encoding = 'utf-16') as htmlFile:
-        write_html_header(htmlFile)
+        write_html_header(htmlFile, title)
 
         htmlFile.write('\n<body>\n')
         htmlFile.write('<table id="results_table">\n')
 
-        html_table_write_header(htmlFile, ['Управление', 'Локация', 'Макс. глубина', 'Наживки', 'Время', 'Глубина', 'Слой', 'Рыбы', 'Кол-во рыб'])
+        html_table_write_header(htmlFile, ['Локация', 'Время', 'Макс. глубина', 'Слой', 'Глубина', 'Наживки', 'Рыбы', 'Кол-во рыб', 'Управление'])
 
         for resKey in results:
 
@@ -381,19 +384,18 @@ def print_results(results: dict, fishDb: dict, maxBycatch: int | None):
             else:
                 layerStr = to_html_list(layer)
 
-            
 
             # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
             html_write_row(htmlFile, [
-                '<button onclick="removeRow(this)">Удалить</button>',
                 location_name_from_tuple(loc),
-                get_max_depth(global_loc_db, loc),
-                bitesStr,
                 create_html_list_from_time_set(time),
-                str(depth),
+                get_max_depth(global_loc_db, loc),
                 layerStr,
+                str(depth),
+                bitesStr,
                 fishesStr,
-                len(fishes)])
+                len(fishes),
+                '<button onclick="removeRow(this)">Удалить</button>'])
 
         htmlFile.write("</table>\n")
         html_embed_scripts(htmlFile)
@@ -559,7 +561,14 @@ def main():
     else:
         cleanedUp = layered
 
-    print_results(cleanedUp, fishDb, args.maxbycatch)
+    if args.fish is not None:
+        title = args.fish
+    elif args.location is not None:
+        title = args.location
+    else:
+        title = "Search results table"
+
+    print_results(title, cleanedUp, fishDb, args.maxbycatch)
 
 
 def depths_from_edges(edges) -> list[Depth]:
@@ -571,8 +580,9 @@ def depths_from_edges(edges) -> list[Depth]:
         if d[1] == EdgeType.HIGH: # 2
             if nesting == 0:
                 raise "WTF"
-            depths.append(Depth(lowEdge, d[0]))
-            lowEdge = d[0] + minDepthStep
+            if d[0] >= lowEdge:
+                depths.append(Depth(lowEdge, d[0]))
+                lowEdge = d[0] + minDepthStep
             nesting -= 1
         if d[1] == EdgeType.LOW: # 1
             if lowEdge != d[0] and nesting != 0:
@@ -631,12 +641,12 @@ def process(fishDb, bites, locs, time, depth: Depth) -> dict[CastParams, list[st
         edges.sort(key=lambda item: item[1])
         edges.sort(key=lambda item: item[0])
 
-        print(key)
-        print(edges)
+        # print(key)
+        # print(edges)
 
         depths = depths_from_edges(edges)
 
-        print(depths)
+        # print(depths)
 
         for d in depths:
 
