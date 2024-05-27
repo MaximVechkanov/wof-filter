@@ -217,7 +217,7 @@ def load_fish_database() -> dict:
 
     return result
 
-def load_database() -> Database:
+def load_database(allow_golden_bites: bool, allow_paid_locations: bool) -> Database:
     with open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
         fishDb = load_fish_database()
 
@@ -236,7 +236,24 @@ def load_database() -> Database:
         if not check_database(fishDb, bites, locations):
             raise RuntimeError("Database currupted")
         
-        return (fishDb, set(bites), set(locations))
+    bites = set(bites)
+
+    if not allow_golden_bites:
+        with open("golden_bites.yaml") as gbFile:
+            goldenBites = yaml.safe_load(gbFile)
+            bites = bites.difference(goldenBites)
+
+    if not allow_paid_locations:
+        with open("paid_locations.yaml") as plFile:
+            paidLocs = yaml.safe_load(plFile)
+        resLocations = set()
+        for loc in locations:
+            if loc[0] not in paidLocs:
+                resLocations.add(loc)
+    else:
+        resLocations = set(locations)
+
+    return (fishDb, bites, resLocations)
 
 
 def html_write_row(file, values: list[str]) -> None:
@@ -403,7 +420,7 @@ def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: in
         htmlFile.write("</html>\n")
 
 def find_in_location(location: LocationType, name: str):
-    return location[0] == name or location[1] == name
+    return (name in location[0]) or (location[1] == name)
 
 def can_catch_in_layer(bottomRelation: str | None, layer: LayerType) -> bool:
     if bottomRelation is None:
@@ -484,11 +501,13 @@ def main():
     parser.add_argument("-b", "--bite", help="Наживка")
     parser.add_argument("-l", "--location", help="Локация")
     parser.add_argument("-m", "--maxbycatch", help="Максимальное количество рыб в прилове", type=int)
+    parser.add_argument("-g", "--golden-bites", help="Включить золотые и редкие наживки", action="store_true")
+    parser.add_argument("-p", "--paid-locations", help="Включить платные локации", action="store_true")
     args = parser.parse_args()
 
     # print(args.fish)
 
-    (fishDb, bitesDb, locationsDb) = load_database()
+    (fishDb, bitesDb, locationsDb) = load_database(args.golden_bites, args.paid_locations)
 
     # print_fish_in_db(fishDb)
     # return 0

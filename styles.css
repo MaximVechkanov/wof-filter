@@ -4,6 +4,10 @@ table, th, td {
   padding: 7px;
 }
 
+th {
+  cursor: pointer;
+}
+
 ul li {
   margin-bottom: 3px;
 }
