@@ -217,7 +217,7 @@ def load_fish_database() -> dict:
 
     return result
 
-def load_database(allow_golden_bites: bool, allow_paid_locations: bool) -> Database:
+def load_database() -> Database:
     with open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
         fishDb = load_fish_database()
 
@@ -236,24 +236,7 @@ def load_database(allow_golden_bites: bool, allow_paid_locations: bool) -> Datab
         if not check_database(fishDb, bites, locations):
             raise RuntimeError("Database currupted")
         
-    bites = set(bites)
-
-    if not allow_golden_bites:
-        with open("golden_bites.yaml") as gbFile:
-            goldenBites = yaml.safe_load(gbFile)
-            bites = bites.difference(goldenBites)
-
-    if not allow_paid_locations:
-        with open("paid_locations.yaml") as plFile:
-            paidLocs = yaml.safe_load(plFile)
-        resLocations = set()
-        for loc in locations:
-            if loc[0] not in paidLocs:
-                resLocations.add(loc)
-    else:
-        resLocations = set(locations)
-
-    return (fishDb, bites, resLocations)
+    return (fishDb, set(bites), set(locations))
 
 
 def html_write_row(file, values: list[str]) -> None:
@@ -507,7 +490,7 @@ def main():
 
     # print(args.fish)
 
-    (fishDb, bitesDb, locationsDb) = load_database(args.golden_bites, args.paid_locations)
+    (fishDb, bitesDb, locationsDb) = load_database()
 
     # print_fish_in_db(fishDb)
     # return 0
@@ -518,6 +501,10 @@ def main():
             return 1
         else:
             bites = set([args.bite])
+    elif not args.golden_bites:
+        with open("golden_bites.yaml") as gbFile:
+            goldenBites = yaml.safe_load(gbFile)
+            bites = bitesDb.difference(goldenBites)
     else:
         bites = bitesDb
         
@@ -529,6 +516,13 @@ def main():
         locs = set()
         for loc in locationsDb:
             if find_in_location(loc, args.location):
+                locs.add(loc)
+    elif not args.paid_locations:
+        with open("paid_locations.yaml") as plFile:
+            paidLocs = yaml.safe_load(plFile)
+            locs = set()
+        for loc in locationsDb:
+            if loc[0] not in paidLocs:
                 locs.add(loc)
     else:
         locs = locationsDb
