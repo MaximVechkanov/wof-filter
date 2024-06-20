@@ -11,7 +11,7 @@
             "program": "main.py",
             // "program": "${file}",
             "console": "integratedTerminal",
-            "args": "-m 1 -f \"Маркузения нильская\" -b \"\" --location \"\""//"${command:pickArgs}"
+            "args": "-m 1 -f \"Голец усатый\" -b \"\" --location \"\""//"${command:pickArgs}"
             // "args": "${command:pickArgs}"
         },
 
