@@ -17,6 +17,7 @@ minDepthStep = 0.01
 kMaxDepth = 1000
 minFloatDepth = 0.4
 fish_db_dir = 'fish_db'
+bottom_level_width = 1.
 
 global_loc_db = dict()
 
@@ -151,6 +152,9 @@ class CastParams:
 
 def get_max_depth(locDb, location: LocationType) -> float:
     return locDb[location[0]][location[1]]['max-depth']
+
+def get_min_depth(locDb, location: LocationType) -> float:
+    return locDb[location[0]][location[1]]['min-depth']
 
 def check_database(fishDb: dict, bites: list, locations: list) -> bool:
     for fishName in fishDb:
@@ -444,7 +448,21 @@ def split_by_layer(merged: dict, fishDb: dict):
             newKey = (loc, time, depth, frozenset(merged[key]), LayerType.ALL)
             results[newKey] = fishes.copy()
         else:
-            for layer in [LayerType.BOTTOM, LayerType.LOWER, LayerType.UPPER]:
+
+            possibleLayers = list[LayerType]()
+            minD = get_min_depth(global_loc_db, loc)
+            maxD = get_max_depth(global_loc_db, loc)
+
+            if depth.low < (maxD - bottom_level_width):
+                possibleLayers.append(LayerType.UPPER)
+
+            if depth.high > minD:
+                possibleLayers.append(LayerType.BOTTOM)
+
+            if depth.high >= (minD - bottom_level_width):
+                possibleLayers.append(LayerType.LOWER)
+
+            for layer in possibleLayers:
 
                 newKey = (loc, time, depth, frozenset(merged[key]), layer)
 
