@@ -359,6 +359,8 @@ def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: in
 
         html_table_write_header(htmlFile, ['Локация', 'Время', 'Макс. глубина', 'Слой', 'Глубина', 'Наживки', 'Рыбы', 'Кол-во рыб', 'Управление'])
 
+        totalPrinted = 0
+
         for resKey in results:
 
             loc, time, depth, bitesSet, layer = resKey
@@ -372,6 +374,8 @@ def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: in
 
             if depth.high < minFloatDepth:
                 continue
+
+            totalPrinted += 1
 
             fishes.sort()
 
@@ -405,6 +409,8 @@ def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: in
         html_embed_scripts(htmlFile)
         htmlFile.write("</body>\n")
         htmlFile.write("</html>\n")
+
+        print("Total printed: " + str(totalPrinted) + " rows")
 
 def find_in_location(location: LocationType, name: str):
     return (name in location[0]) or (location[1] == name)
