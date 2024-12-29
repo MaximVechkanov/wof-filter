@@ -220,11 +220,6 @@ def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: in
 
             fishes.sort()
 
-            # for idx, fishName in enumerate(fishes):
-            #     bottomRelation = fishDb[fishName].get('bottom')
-            #     if bottomRelation != None:
-            #         fishes[idx] = f"{fishName} ({bottomType[bottomRelation]})"
-
             fishesStr = to_html_list(fishes)
             bitesStr = to_html_list(bites)
 
@@ -234,7 +229,6 @@ def print_results(title: str | None, results: dict, fishDb: dict, maxBycatch: in
                 layerStr = to_html_list(layer)
 
 
-            # html_write_row(htmlFile, [location_name_from_tuple(res.loc), res.bite, time_name[res.time], str(res.depth), len(fishes), fishesStr])
             html_write_row(htmlFile, [
                 location_name_from_tuple(loc),
                 create_html_list_from_time_set(time),
