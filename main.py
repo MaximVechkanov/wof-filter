@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 import argparse
-import yaml
 from enum import Enum
-import my_utilities
-import os
+from my_utilities import *
+from html_utils import *
+
 # from pprint import pprint
 
-
-LocationType = tuple[str, str]
 LocBiteTimeTuple = tuple[str, str, str]
 
 Database = tuple[dict[str], set[str], set[LocationType]] # fishes, bites, locations
 minDepthStep = 0.01
 kMaxDepth = 1000
 minFloatDepth = 0.4
-fish_db_dir = 'fish_db'
 bottom_level_width = 1.
 
 global_loc_db = dict()
@@ -58,17 +55,6 @@ class LayerType(Enum):
     
     def __lt__(self, other):
         return self.value < other.value
-
-def to_location_type(water: str, loc: str) -> LocationType:
-    return (water, loc)
-
-
-def location_name_from_strings(water: str, loc: str) -> str:
-    return water + ": " + loc
-
-
-def location_name_from_tuple(location: LocationType) -> str:
-    return location_name_from_strings(location[0], location[1])
 
 
 def loc_list_to_str_list(locationsList: list[LocationType]) -> list[str]:
@@ -156,130 +142,6 @@ def get_max_depth(locDb, location: LocationType) -> float:
 def get_min_depth(locDb, location: LocationType) -> float:
     return locDb[location[0]][location[1]]['min-depth']
 
-def check_database(fishDb: dict, bites: list, locations: list) -> bool:
-    for fishName in fishDb:
-
-        if len(fishDb[fishName]['depth']) != 2:
-            print("Ошибка: Некорректно указана глубина для рыбы '{}'".format(fishName))
-            return False
-
-        fishBites = fishDb[fishName].get('bites')
-
-        if fishBites is None:
-            print("Ошибка: Наживки не указаны для рыбы '{}'".format(fishName))
-            return False
-
-        # print(fishBites)
-        # print(type(fishBites))
-
-        for fb in fishBites:
-            if not fb in bites:
-                print("Ошибка: Наживка '{}', указанная для рыбы '{}' не найдена в списке наживок!".format(fb, fishName))
-                return False
-        
-        fishLocs = fishDb[fishName].get('locs')
-        if fishLocs is None:
-            print("Ошибка: локации не указаны для рыбы '{}'".format(fishName))
-            return False
-
-        for location in fishLocs:
-            if not location in locations:
-                print("Ошибка: Локация '{}', указанная для рыбы '{}' не найдена в списке локаций!".format(location, fishName))
-                return False
-    return True
-
-def parse_locations(locDb: dict, fishDb: dict) -> list[LocationType]:
-    locations = []
-
-    for water in locDb:
-        for loc in locDb[water]:
-            fishlist = locDb[water][loc]['fish']
-
-            locationAsTuple = (water, loc)
-
-            locations.append(locationAsTuple)
-
-            for fishName in fishlist:
-                if fishName in fishDb:
-                    fishDb[fishName].setdefault('locs', list()).append(locationAsTuple)
-
-    return locations
-
-def load_fish_database() -> dict:
-    result = dict()
-
-    for filename in os.listdir(fish_db_dir):
-        fullFileName = os.path.join(fish_db_dir, filename)
-
-        # print(filename, ' ', fullFileName)
-
-        with open(fullFileName) as file:
-            newData = yaml.safe_load(file)
-
-            if newData is not None:
-                result.update(newData)
-
-    return result
-
-def load_database() -> Database:
-    with open('bites.yaml') as bFile, open('locations_new.yaml') as locFile:
-        fishDb = load_fish_database()
-
-        print(f"Num fishes in database: {len(fishDb)}")
-
-        bites = yaml.safe_load(bFile)
-        locDb = yaml.safe_load(locFile)
-
-        global global_loc_db
-        global_loc_db = locDb
-
-        locations: list[LocationType] = parse_locations(locDb, fishDb)
-
-        # pprint(locations)
-
-        if not check_database(fishDb, bites, locations):
-            raise RuntimeError("Database currupted")
-        
-    return (fishDb, set(bites), set(locations))
-
-
-def html_write_row(file, values: list[str]) -> None:
-    file.write("<tr>\n")
-    for idx, item in enumerate(values):
-        file.write("  <td")
-        if (idx == len(values) - 1):
-            file.write(' valign="top"')
-        file.write(">" + str(item) + "</td>" + '\n')
-    file.write("</tr>\n")
-
-
-def html_table_write_header(file, values: list[str]) -> None:
-    file.write("<tr>\n")
-    for idx, item in enumerate(values):
-        file.write("  <th onclick=\"sortTable({})\">".format(idx) + str(item) + "</th>" + '\n')
-    file.write("</tr>\n")
-
-
-def to_html_list(items, ordered: bool = False) -> str:
-    pre = list(items)
-    pre.sort()
-    
-    result = ""
-    if ordered:
-        result += '<ol>\n'
-    else:
-        result += '<ul>\n'
-
-    for item in pre:
-        result += '    <li>' + str(item) + '</li>\n'
-
-    if ordered:
-        result += '</ol>\n'
-    else:
-        result += '</ul>\n'
-    
-    return result
-
 
 def create_html_list_from_time_set(timeset: set[str]) -> str:
     arr = []
@@ -287,27 +149,6 @@ def create_html_list_from_time_set(timeset: set[str]) -> str:
         arr.append(time_name[t])
 
     return to_html_list(arr)
-
-def html_embed_scripts(htmlFile):
-    htmlFile.write('<script type = "text/javascript">\n')
-    with open('scripts.js') as sFile:
-        htmlFile.write(sFile.read())
-    htmlFile.write("</script>\n")
-
-def html_embed_styles(htmlFile):
-    htmlFile.write('  <style>\n')
-    with open('styles.css') as sFile:
-        htmlFile.write(sFile.read())
-    htmlFile.write('  </style>\n')
-
-def write_html_header(htmlFile, title):
-    htmlFile.write('<!DOCTYPE html>\n')
-    htmlFile.write('<html>\n')
-    htmlFile.write('<head>\n')
-    htmlFile.write(f'  <title>{title}</title>\n')
-    htmlFile.write('\n')
-    html_embed_styles(htmlFile)
-    htmlFile.write('</head>\n')
 
 
 def merge_by_daytime(results) -> dict:
@@ -514,8 +355,10 @@ def main():
 
     # print(args.fish)
 
-    (fishDb, bitesDb, locationsDb) = load_database()
-
+    (fishDb, bitesDb, locationsSet, locationsRaw) = load_database()
+    global global_loc_db
+    global_loc_db = locationsRaw
+    
     # print_fish_in_db(fishDb)
     # return 0
 
@@ -538,18 +381,18 @@ def main():
 
     if args.location is not None and args.location != '':
         locs = set()
-        for loc in locationsDb:
+        for loc in locationsSet:
             if find_in_location(loc, args.location):
                 locs.add(loc)
     elif not args.paid_locations:
         with open("paid_locations.yaml") as plFile:
             paidLocs = yaml.safe_load(plFile)
             locs = set()
-        for loc in locationsDb:
+        for loc in locationsSet:
             if loc[0] not in paidLocs:
                 locs.add(loc)
     else:
-        locs = locationsDb
+        locs = locationsSet
 
     isFishSpecified = args.fish is not None and args.fish != ''
 
